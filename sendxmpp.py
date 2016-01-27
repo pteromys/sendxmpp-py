@@ -114,6 +114,11 @@ file_or_jid = FirstOf(argparse.FileType('r'),
 
 if __name__ == '__main__':
 
+    # do nothing for empty messages
+    msg = sys.stdin.read().strip()
+    if not msg:
+        exit(0)
+
     p = argparse.ArgumentParser()
     p.add_argument('recipients', metavar='<file or JID>', nargs='+', type=file_or_jid, help='file format is one JID per line')
     p.add_argument('-c', '--config', nargs='?', default=os.path.expanduser('~/.xmpputils'), type=argparse.FileType('r'))
@@ -140,7 +145,7 @@ if __name__ == '__main__':
 
     jid = sleekxmpp.basexmpp.JID(sendxmpp_conf('jid'))
     jid.resource = jid.resource or 'sendxmpp.py'
-    xmpp = SendMsgBot(jid, sendxmpp_conf('password'), global_args.recipients, sys.stdin.read(), global_args.subject, global_args.force_pgp, global_args.attempt_pgp)
+    xmpp = SendMsgBot(jid, sendxmpp_conf('password'), global_args.recipients, msg, global_args.subject, global_args.force_pgp, global_args.attempt_pgp)
 
     if xmpp.connect():
         xmpp.process(block=True)
