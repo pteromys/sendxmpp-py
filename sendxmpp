@@ -114,14 +114,10 @@ file_or_jid = FirstOf(argparse.FileType('r'),
 
 if __name__ == '__main__':
 
-    # do nothing for empty messages
-    msg = sys.stdin.read().strip()
-    if not msg:
-        exit(0)
-
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(description='Send a message with XMPP.')
     p.add_argument('recipients', metavar='<file or JID>', nargs='+', type=file_or_jid, help='file format is one JID per line')
-    p.add_argument('-c', '--config', nargs='?', default=os.path.expanduser('~/.xmpputils'), type=argparse.FileType('r'))
+    p.add_argument('-c', '--config', nargs='?', help='path to config file. default: /etc/sendxmpp/sendxmpp.cfg and ~/.config/sendxmpp.cfg')
+    p.add_argument('-a', '--account', nargs='?', default='sendxmpp', help='account to use in config file. default: sendxmpp')
     p.add_argument('-s', '--subject', nargs='?', default='', help='WARNING: subject never encrypted')
     group = p.add_mutually_exclusive_group()
     group.add_argument("-e", "--force-pgp", action="store_true", help='Force OpenPGP encryption for all recipients')
@@ -131,6 +127,31 @@ if __name__ == '__main__':
     except argparse.ArgumentError as e:
         print(e)
         exit(1)
+
+    # do nothing for empty messages
+    msg = sys.stdin.read().strip()
+    if not msg:
+        exit(0)
+
+    jid_conf = None
+    pass_conf = None
+
+    try:
+        conf = configparser.ConfigParser()
+        files_read = None
+        if global_args.config:
+            files_read = conf.read([global_args.config])
+        else:
+            files_read = conf.read([ '/etc/sendxmpp/sendxmpp.cfg', os.path.expanduser('~/.config/sendxmpp.cfg') ])
+        if len(files_read) == 0:
+            raise argparse.ArgumentTypeError("missing config files")
+        sendxmpp_conf = lambda key: conf.get(global_args.account, key)
+        jid_conf = sendxmpp_conf('jid')
+        pass_conf = sendxmpp_conf('password')
+    except Exception as e:
+        print(e)
+        exit(1)
+
     r = []
     for recipient in global_args.recipients:
         if isinstance(recipient, sleekxmpp.basexmpp.JID):
@@ -139,13 +160,9 @@ if __name__ == '__main__':
             r.extend(map(sleekxmpp.basexmpp.JID, filter(None, recipient.read().split('\n'))))
     global_args.recipients = r
 
-    conf = configparser.ConfigParser()
-    conf.read_file(global_args.config)
-    sendxmpp_conf = lambda key: conf.get('sendxmpp', key)
-
-    jid = sleekxmpp.basexmpp.JID(sendxmpp_conf('jid'))
+    jid = sleekxmpp.basexmpp.JID(jid_conf)
     jid.resource = jid.resource or 'sendxmpp.py'
-    xmpp = SendMsgBot(jid, sendxmpp_conf('password'), global_args.recipients, msg, global_args.subject, global_args.force_pgp, global_args.attempt_pgp)
+    xmpp = SendMsgBot(jid, pass_conf, global_args.recipients, msg, global_args.subject, global_args.force_pgp, global_args.attempt_pgp)
 
     if xmpp.connect():
         xmpp.process(block=True)

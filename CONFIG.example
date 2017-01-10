@@ -1,7 +1,0 @@
-[echobot]
-jid = echo@example.net
-password = azerty
-
-[sendxmpp]
-jid = username@example.net
-password = qwerty
