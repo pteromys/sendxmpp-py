@@ -23,3 +23,7 @@ Usage examples:
 
 - `echo "This is a test" | sendxmpp user@host`
 - `sendxmpp user@host <README.md`
+
+License
+-------
+GNU/GPLv3 - Check LICENSE.md for details
