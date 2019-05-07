@@ -19,12 +19,11 @@ import configparser
 import os.path
 import sys
 
-import sleekxmpp
+import slixmpp
 
-from sleekxmpp.thirdparty import GPG
-
-from sleekxmpp.stanza import Message
-from sleekxmpp.xmlstream import register_stanza_plugin, ElementBase
+from slixmpp.thirdparty import GPG
+from slixmpp.stanza import Message
+from slixmpp.xmlstream import register_stanza_plugin, ElementBase
 
 class PGPEncrypted(ElementBase):
     name = 'x'
@@ -43,10 +42,10 @@ class PGPEncrypted(ElementBase):
         else:
             del parent['encrypted']
 
-class SendMsgBot(sleekxmpp.ClientXMPP):
+class SendMsgBot(slixmpp.ClientXMPP):
 
     def __init__(self, jid, password, recipients, message, subject, force_pgp, attempt_pgp):
-        sleekxmpp.ClientXMPP.__init__(self, jid, password)
+        slixmpp.ClientXMPP.__init__(self, jid, password)
         self.recipients = recipients
         self.msg = message
         self.subject = subject
@@ -109,7 +108,7 @@ def FirstOf(*types, error='argument "{}" is not valid'):
     return f
 
 file_or_jid = FirstOf(argparse.FileType('r'),
-                      sleekxmpp.basexmpp.JID,
+                      slixmpp.basexmpp.JID,
                       error='"{}" is neither a file nor a valid JID')
 
 if __name__ == '__main__':
@@ -154,18 +153,16 @@ if __name__ == '__main__':
 
     r = []
     for recipient in global_args.recipients:
-        if isinstance(recipient, sleekxmpp.basexmpp.JID):
+        if isinstance(recipient, slixmpp.basexmpp.JID):
             r.append(recipient)
         else:
-            r.extend(map(sleekxmpp.basexmpp.JID, filter(None, recipient.read().split('\n'))))
+            r.extend(map(slixmpp.basexmpp.JID, filter(None, recipient.read().split('\n'))))
     global_args.recipients = r
 
-    jid = sleekxmpp.basexmpp.JID(jid_conf)
+    jid = slixmpp.basexmpp.JID(jid_conf)
     jid.resource = jid.resource or 'sendxmpp.py'
     xmpp = SendMsgBot(jid, pass_conf, global_args.recipients, msg, global_args.subject, global_args.force_pgp, global_args.attempt_pgp)
 
-    if xmpp.connect():
-        xmpp.process(block=True)
-    else:
-        print('Unable to connect.')
-        exit(1)
+    # Connect to the XMPP server and start processing XMPP stanzas.
+    xmpp.connect()
+    xmpp.process(forever=False)
